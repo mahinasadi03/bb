@@ -1,4 +1,4 @@
-name: Windows RustDesk - Final Corrected
+name: Windows RDP
 
 on:
   workflow_dispatch:
@@ -6,29 +6,37 @@ on:
 jobs:
   build:
     runs-on: windows-latest
-
+    timeout-minutes: 9999
     steps:
-    - name: Download, Unzip, and Smart-Run RustDesk
-      shell: powershell
-      run: |
-        Invoke-WebRequest -Uri https://github.com/rustdesk/rustdesk/releases/download/1.1.9/rustdesk-1.1.9-windows_x64.zip -OutFile rustdesk.zip
-        Expand-Archive -Path .\rustdesk.zip -DestinationPath .
-
-        $exePathInRoot = ".\rustdesk.exe"
-        $exePathInSubdir = ".\rustdesk*\rustdesk.exe"
-
-        if (Test-Path $exePathInSubdir) {
-          Write-Output "File found in a subdirectory. Running from there..."
-          $rustdeskDir = Get-ChildItem -Directory -Filter "rustdesk*" | Select-Object -First 1
-          cd $rustdeskDir
-          ./rustdesk.exe --server 1.1.1.1
-        }
-        elseif (Test-Path $exePathInRoot) {
-          Write-Output "File found in root directory. Running from there..."
-          ./rustdesk.exe --server 1.1.1.1
-        } 
-        else {
-          Write-Error "FATAL: Could not find rustdesk.exe anywhere after extraction."
-          Get-ChildItem -Recurse # Show all files for debugging
-          exit 1
-        }
+      - name: Download Ngrok & Set Account
+        run: |
+          echo "NGROK_AUTH_TOKEN=${{ secrets.NGROK_AUTH_TOKEN }}" >> $env:GITHUB_ENV
+          Invoke-WebRequest -Uri https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
+          Expand-Archive ngrok.zip
+      
+      - name: Enable RDP
+        run: |
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+          
+      - name: Create Tunnel
+        run: Start-Process Powershell -ArgumentList '-NoExit', '-Command', './ngrok.exe tcp 3389'
+        
+      - name: Set Password & Get Connection Info
+        run: |
+          $password = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 20 | ForEach-Object {[char]$_})
+          $user = "Administrator"
+          Add-Content -Path $env:USERPROFILE\Documents\creds.txt -Value "User: $user`nPassword: $password"
+          net user $user $password
+          
+          echo "RDP Address:"
+          (Invoke-WebRequest http://127.0.0.1:4040/api/tunnels).Content | ConvertFrom-Json | Select-Object -ExpandProperty tunnels | Select-Object -ExpandProperty public_url
+          echo "========================================================================="
+          echo "User: $user"
+          echo "Password: $password"
+          echo "========================================================================="
+          
+      - name: Keep Alive
+        run: |
+          Start-Sleep -Seconds 99999
