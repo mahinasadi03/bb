@@ -1,0 +1,19 @@
+name: Windows rust desk
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Download RustDesk
+      run: |
+        wget https://github.com/rustdesk/rustdesk/releases/download/1.1.9/rustdesk-1.1.9-windows_x64.zip -O rustdesk.zip
+        unzip rustdesk.zip
+
+    - name: Run RustDesk
+      run: |
+        cd rustdesk-1.1.9-windows_x64
+        ./rustdesk.exe --server 1.1.1.1
