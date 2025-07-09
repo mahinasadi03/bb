@@ -25,7 +25,7 @@ jobs:
         
       - name: Set Password & Get Connection Info
         run: |
-          Start-Sleep -Seconds 15
+          Start-Sleep -Seconds 30
           $password = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 20 | ForEach-Object {[char]$_})
           $user = "Administrator"
           net user $user $password
