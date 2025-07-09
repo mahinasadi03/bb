@@ -1,4 +1,4 @@
-name: Windows rust desk
+name: Windows RustDesk - Final
 
 on:
   workflow_dispatch:
@@ -8,12 +8,11 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: Download and Unzip RustDesk
+    - name: Download, Unzip, and Run RustDesk
+      shell: powershell
       run: |
         Invoke-WebRequest -Uri https://github.com/rustdesk/rustdesk/releases/download/1.1.9/rustdesk-1.1.9-windows_x64.zip -OutFile rustdesk.zip
         Expand-Archive -Path .\rustdesk.zip -DestinationPath .
-        
-    - name: Run RustDesk
-      run: |
-        cd rustdesk-1.1.9-windows_x64
+        $rustdeskDir = Get-ChildItem -Directory -Filter "rustdesk*" | Select-Object -First 1
+        cd $rustdeskDir
         ./rustdesk.exe --server 1.1.1.1
