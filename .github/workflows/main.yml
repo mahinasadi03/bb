@@ -8,10 +8,12 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: Download RustDesk
+    - name: Download and Unzip RustDesk
       run: |
         Invoke-WebRequest -Uri https://github.com/rustdesk/rustdesk/releases/download/1.1.9/rustdesk-1.1.9-windows_x64.zip -OutFile rustdesk.zip
         Expand-Archive -Path .\rustdesk.zip -DestinationPath .
         
     - name: Run RustDesk
-      run: ./rustdesk.exe --server 1.1.1.1
+      run: |
+        cd rustdesk-1.1.9-windows_x64
+        ./rustdesk.exe --server 1.1.1.1
