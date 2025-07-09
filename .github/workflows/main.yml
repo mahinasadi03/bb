@@ -1,4 +1,4 @@
-name: Windows RustDesk - Final
+name: Windows RustDesk - Final Corrected
 
 on:
   workflow_dispatch:
@@ -8,11 +8,27 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: Download, Unzip, and Run RustDesk
+    - name: Download, Unzip, and Smart-Run RustDesk
       shell: powershell
       run: |
         Invoke-WebRequest -Uri https://github.com/rustdesk/rustdesk/releases/download/1.1.9/rustdesk-1.1.9-windows_x64.zip -OutFile rustdesk.zip
         Expand-Archive -Path .\rustdesk.zip -DestinationPath .
-        $rustdeskDir = Get-ChildItem -Directory -Filter "rustdesk*" | Select-Object -First 1
-        cd $rustdeskDir
-        ./rustdesk.exe --server 1.1.1.1
+
+        $exePathInRoot = ".\rustdesk.exe"
+        $exePathInSubdir = ".\rustdesk*\rustdesk.exe"
+
+        if (Test-Path $exePathInSubdir) {
+          Write-Output "File found in a subdirectory. Running from there..."
+          $rustdeskDir = Get-ChildItem -Directory -Filter "rustdesk*" | Select-Object -First 1
+          cd $rustdeskDir
+          ./rustdesk.exe --server 1.1.1.1
+        }
+        elseif (Test-Path $exePathInRoot) {
+          Write-Output "File found in root directory. Running from there..."
+          ./rustdesk.exe --server 1.1.1.1
+        } 
+        else {
+          Write-Error "FATAL: Could not find rustdesk.exe anywhere after extraction."
+          Get-ChildItem -Recurse # Show all files for debugging
+          exit 1
+        }
