@@ -1,4 +1,4 @@
-name: Windows RDP
+name: Windows RDP - Final Version
 
 on:
   workflow_dispatch:
@@ -6,37 +6,36 @@ on:
 jobs:
   build:
     runs-on: windows-latest
-    timeout-minutes: 9999
     steps:
-      - name: Download Ngrok & Set Account
+      - name: Download and Configure Ngrok
         run: |
-          echo "NGROK_AUTH_TOKEN=${{ secrets.NGROK_AUTH_TOKEN }}" >> $env:GITHUB_ENV
           Invoke-WebRequest -Uri https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
           Expand-Archive ngrok.zip
-      
-      - name: Enable RDP
+          ./ngrok.exe config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
+          
+      - name: Enable RDP and Set User Password
         run: |
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
-          
-      - name: Create Tunnel
-        run: Start-Process Powershell -ArgumentList '-NoExit', '-Command', './ngrok.exe tcp 3389'
-        
-      - name: Set Password & Get Connection Info
-        run: |
-          Start-Sleep -Seconds 30
           $password = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 20 | ForEach-Object {[char]$_})
           $user = "Administrator"
           net user $user $password
-          
-          echo "RDP Address:"
-          (Invoke-WebRequest http://127.0.0.1:4040/api/tunnels).Content | ConvertFrom-Json | Select-Object -ExpandProperty tunnels | Select-Object -ExpandProperty public_url
-          echo "========================================================================="
-          echo "User: $user"
-          echo "Password: $password"
-          echo "========================================================================="
-          
-      - name: Keep Alive
+          echo "RDP_USER=$user" >> $env:GITHUB_ENV
+          echo "RDP_PASSWORD=$password" >> $env:GITHUB_ENV
+
+      - name: Start Ngrok Tunnel as a Background Job
+        run: Start-Job -ScriptBlock { ./ngrok.exe tcp 3389 }
+        
+      - name: Get RDP Connection Info
         run: |
-          Start-Sleep -Seconds 99999
+          Start-Sleep -Seconds 30
+          $tunnels = (Invoke-WebRequest http://127.0.0.1:4040/api/tunnels).Content | ConvertFrom-Json | Select-Object -ExpandProperty tunnels
+          $rdpAddress = ($tunnels | Where-Object { $_.proto -eq 'tcp' } | Select-Object -ExpandProperty public_url)
+          echo "========================================================================="
+          echo "RDP Address: $rdpAddress"
+          echo "User: ${{ env.RDP_USER }}"
+          echo "Password: ${{ env.RDP_PASSWORD }}"
+          echo "========================================================================="
+          
+      - name: Keep Server Alive
+        run: Start-Sleep -Seconds 21000
