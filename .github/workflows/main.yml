@@ -14,6 +14,4 @@ jobs:
         Expand-Archive -Path .\rustdesk.zip -DestinationPath .
         
     - name: Run RustDesk
-      run: |
-        cd rustdesk-1.1.9-windows_x64
-        ./rustdesk.exe --server 1.1.1.1 # This is a placeholder, RustDesk will generate its own ID/password
+      run: ./rustdesk.exe --server 1.1.1.1
