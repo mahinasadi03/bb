@@ -10,10 +10,10 @@ jobs:
     steps:
     - name: Download RustDesk
       run: |
-        wget https://github.com/rustdesk/rustdesk/releases/download/1.1.9/rustdesk-1.1.9-windows_x64.zip -O rustdesk.zip
-        unzip rustdesk.zip
-
+        Invoke-WebRequest -Uri https://github.com/rustdesk/rustdesk/releases/download/1.1.9/rustdesk-1.1.9-windows_x64.zip -OutFile rustdesk.zip
+        Expand-Archive -Path .\rustdesk.zip -DestinationPath .
+        
     - name: Run RustDesk
       run: |
         cd rustdesk-1.1.9-windows_x64
-        ./rustdesk.exe --server 1.1.1.1
+        ./rustdesk.exe --server 1.1.1.1 # This is a placeholder, RustDesk will generate its own ID/password
