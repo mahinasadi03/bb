@@ -1,6 +1,6 @@
-name: Windows RDP
+name: Windows RDP - Final Working Version
 
-on: 
+on:
   workflow_dispatch:
 
 jobs:
@@ -13,20 +13,24 @@ jobs:
           Expand-Archive ngrok.zip
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-          
-      - name: Set User Password
+
+      - name: Create and Setup User
         run: |
+          $user = "runner"
           $password = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 20 | ForEach-Object {[char]$_})
+          echo "RDP_USER=$user" >> $env:GITHUB_ENV
           echo "RDP_PASSWORD=$password" >> $env:GITHUB_ENV
-          net user Administrator $password
-          
+          net user $user $password /add
+          net localgroup "Administrators" $user /add
+          net localgroup "Remote Desktop Users" $user /add
+
       - name: Start Tunnel
         env:
           NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
         run: |
           ./ngrok.exe authtoken $env:NGROK_AUTH_TOKEN
           ./ngrok.exe tcp 3389 --log "stdout" > ngrok.log &
-          
+
       - name: Get Connection Info
         run: |
           Start-Sleep -Seconds 15
@@ -34,9 +38,9 @@ jobs:
           $rdpAddress = ($tunnels | Where-Object { $_.proto -eq 'tcp' } | Select-Object -ExpandProperty public_url)
           echo "========================================================================="
           echo "RDP Address: $rdpAddress"
-          echo "User: Administrator"
+          echo "User: ${{ env.RDP_USER }}"
           echo "Password: ${{ env.RDP_PASSWORD }}"
           echo "========================================================================="
-          
+
       - name: Keep Workflow Alive
         run: Start-Sleep -Seconds 21000
